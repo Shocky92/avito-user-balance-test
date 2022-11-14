@@ -15,5 +15,7 @@ func main() {
 	app.Get("/", handlers.Home)
 	app.Get("/user/balance/:id", handlers.UserBalance)
 
+	app.Put("/user/balance/:id/increase", handlers.IncreaseUserBalance)
+
 	app.Listen(":3000")
 }
