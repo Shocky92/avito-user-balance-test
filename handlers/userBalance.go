@@ -86,3 +86,32 @@ func OrderReserve(c *fiber.Ctx) error {
 
 	return c.Status(201).JSON(&userOrder)
 }
+
+func OrderProceed(c *fiber.Ctx) error {
+	db := database.DB.Db
+	id := c.Params("id")
+
+	var userOrder models.UserOrder
+
+	userOrderProceed := new(models.UserOrder)
+	if err := c.BodyParser(userOrderProceed); err != nil {
+		return c.SendStatus(500)
+	}
+
+	err := db.Where(
+		"user_id = ? AND service_id = ? AND order_id = ? AND cost = ?",
+		id,
+		userOrderProceed.ServiceId,
+		userOrderProceed.OrderId,
+		userOrderProceed.Cost,
+	).Find(&userOrder).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return c.SendStatus(404)
+	}
+
+	userOrder.IsReserved = false
+	db.Save(&userOrder)
+
+	return c.Status(200).JSON(&userOrder)
+}

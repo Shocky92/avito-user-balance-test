@@ -18,6 +18,7 @@ func main() {
 	app.Put("/user/balance/:id/increase", handlers.IncreaseUserBalance)
 
 	app.Post("/user/:id/order/reserve", handlers.OrderReserve)
+	app.Put("/user/:id/order/proceed", handlers.OrderProceed)
 
 	app.Listen(":3000")
 }
