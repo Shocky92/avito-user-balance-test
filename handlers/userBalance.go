@@ -10,10 +10,11 @@ import (
 )
 
 func UserBalance(c *fiber.Ctx) error {
+	db := database.DB.Db
 	id := c.Params("id")
 	var userBalance models.UserBalance
 
-	result := database.DB.Db.Find(&userBalance, id)
+	result := db.Find(&userBalance, id)
 
 	if result.RowsAffected == 0 {
 		return c.SendStatus(404)
@@ -53,4 +54,35 @@ func IncreaseUserBalance(c *fiber.Ctx) error {
 	db.Save(&userBalance)
 
 	return c.Status(200).JSON(&userBalance)
+}
+
+func OrderReserve(c *fiber.Ctx) error {
+	db := database.DB.Db
+	id := c.Params("id")
+
+	var userBalance models.UserBalance
+
+	err := db.Find(&userBalance, id).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return c.SendStatus(404)
+	}
+
+	userOrder := new(models.UserOrder)
+
+	if err := c.BodyParser(userOrder); err != nil {
+		return c.SendStatus(500)
+	}
+
+	// check if user have enought money for order
+	if userBalance.Balance < userOrder.Cost {
+		return c.SendStatus(400)
+	}
+
+	userBalance.Balance -= userOrder.Cost
+	db.Create(userOrder)
+	userOrder.IsReserved = true
+	db.Save(userBalance)
+
+	return c.Status(201).JSON(&userOrder)
 }
