@@ -9,6 +9,12 @@ import (
 	"gorm.io/gorm"
 )
 
+var messages = map[string]string{
+	"NotFound":        "User balance with this user_id is not found",
+	"NotCorrect":      "Input data is not correct",
+	"NotEnoughtMoney": "User doesn't have enought money to make an order",
+}
+
 func UserBalance(c *fiber.Ctx) error {
 	db := database.DB.Db
 	id := c.Params("id")
@@ -17,7 +23,9 @@ func UserBalance(c *fiber.Ctx) error {
 	result := db.Find(&userBalance, id)
 
 	if result.RowsAffected == 0 {
-		return c.SendStatus(404)
+		return c.Status(404).JSON(&fiber.Map{
+			"error": messages["NotFound"],
+		})
 	}
 
 	return c.Status(200).JSON(&userBalance)
@@ -35,7 +43,9 @@ func IncreaseUserBalance(c *fiber.Ctx) error {
 		newUserBalance := new(models.UserBalance)
 
 		if err := c.BodyParser(newUserBalance); err != nil {
-			return c.SendStatus(500)
+			return c.Status(500).JSON(&fiber.Map{
+				"error": messages["NotCorrect"],
+			})
 		}
 
 		db.Create(newUserBalance)
@@ -46,7 +56,9 @@ func IncreaseUserBalance(c *fiber.Ctx) error {
 	updateUserBalance := new(models.UserBalance)
 
 	if err := c.BodyParser(updateUserBalance); err != nil {
-		return c.SendStatus(500)
+		return c.Status(500).JSON(&fiber.Map{
+			"error": messages["NotCorrect"],
+		})
 	}
 
 	userBalance.Balance += updateUserBalance.Balance
@@ -65,18 +77,24 @@ func OrderReserve(c *fiber.Ctx) error {
 	err := db.Find(&userBalance, id).Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return c.SendStatus(404)
+		return c.Status(404).JSON(&fiber.Map{
+			"error": messages["NotFound"],
+		})
 	}
 
 	userOrder := new(models.UserOrder)
 
 	if err := c.BodyParser(userOrder); err != nil {
-		return c.SendStatus(500)
+		return c.Status(500).JSON(&fiber.Map{
+			"error": messages["NotCorrect"],
+		})
 	}
 
 	// check if user have enought money for order
 	if userBalance.Balance < userOrder.Cost {
-		return c.SendStatus(400)
+		return c.Status(400).JSON(&fiber.Map{
+			"error": messages["NotEnoughtMoney"],
+		})
 	}
 
 	userBalance.Balance -= userOrder.Cost
@@ -95,7 +113,9 @@ func OrderProceed(c *fiber.Ctx) error {
 
 	userOrderProceed := new(models.UserOrder)
 	if err := c.BodyParser(userOrderProceed); err != nil {
-		return c.SendStatus(500)
+		return c.Status(500).JSON(&fiber.Map{
+			"error": messages["NotCorrect"],
+		})
 	}
 
 	err := db.Where(
@@ -107,7 +127,9 @@ func OrderProceed(c *fiber.Ctx) error {
 	).Find(&userOrder).Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return c.SendStatus(404)
+		return c.Status(404).JSON(&fiber.Map{
+			"error": messages["NotFound"],
+		})
 	}
 
 	userOrder.IsReserved = false
